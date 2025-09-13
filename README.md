@@ -1,6 +1,6 @@
 # ark\_info\_search
 
-个人获取明日方舟 PRTS WIKI 信息的尝试，使用原生的 Media API 调用，目的是给astrbot添加明日方舟干员信息查询功能
+个人获取明日方舟 PRTS WIKI 信息的尝试，使用原生的 Media API 调用，目的是给astrbot添加明日方舟信息查询功能
 
 ## 功能简介
 从明日方舟 PRTS Wiki 查询信息 ([PRTS WIKI][2])
