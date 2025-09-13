@@ -16,7 +16,7 @@
 | `__init__.py`     | 主程序                     |
 
 ## 依赖项
-安装依赖：目前仅requests模块需导入
+安装依赖：httpx和asyncio模块
 ```bash
 pip install -r requirements.txt
 ```
