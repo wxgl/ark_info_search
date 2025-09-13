@@ -12,11 +12,13 @@ lei_xing = int(input("查找类型："))
 if lei_xing == 0:
     ganyuan = input("请输入干员名称：")
     # ganyuan = "娜仁图亚"
-    name, zhi_ye, fen_zhi, xing_ji = ganyuan_info.main(ganyuan)
+    name, zhi_ye, fen_zhi, xing_ji, te_xing, te_xing_b = ganyuan_info.main(ganyuan)
     print(f"干员：{name}")
     print(f"职业：{zhi_ye}")
     print(f"分支：{fen_zhi}")
     print(f"星级：{xing_ji}")
+    print(f"特性：{te_xing}")
+    print(f"特性备注：{te_xing_b}")
 else:
     qita = input("请输入名称：")
     # qita = "娜仁图亚的信物"
