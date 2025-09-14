@@ -1,12 +1,13 @@
 import re
 import search_model
+import asyncio
 from collections import namedtuple
 
 OperatorInfo = namedtuple('OperatorInfo',
                           ['qita_name', 'miao_shu', 'yong_tu', 'huode_fangshi', 'fen_lei'])
 
 
-async def main(qita):
+async def clean_over_wiki(qita):
     qita_name, wikitext = await search_model.get_operator_wikitext(qita)
 
     if not wikitext:
@@ -33,12 +34,23 @@ async def main(qita):
                         results['huode_fangshi'], results['fen_lei'])
 
 
-if __name__ == "__main__":
-    import asyncio
+async def main():
+    qita = input("请输入名称：")
+    # qita = "娜仁图亚的信物"
+    """
+    result含有的参数（按顺序）：
+    qita_name, miao_shu, yong_tu, huode_fangshi, fen_lei
+    """
+    result = await clean_over_wiki(qita)
+    if result:
+        print(f"名称：{result.qita_name}")
+        print(f"介绍：{result.miao_shu}")
+        print(f"用途：{result.yong_tu}")
+        print(f"获得方式：{result.huode_fangshi}")
+        print(f"分类：{result.fen_lei}")
+    else:
+        print("未找到该干员的信息。")
 
-    result = asyncio.run(main("娜仁图亚"))
-    print(f"名称：{result.qita_name}")
-    print(f"介绍：{result.miao_shu}")
-    print(f"用途：{result.yong_tu}")
-    print(f"获得方式：{result.huode_fangshi}")
-    print(f"分类：{result.fen_lei}")
+
+if __name__ == "__main__":
+    asyncio.run(main("娜仁图亚的信物"))

@@ -1,4 +1,5 @@
 import httpx
+import asyncio
 
 
 async def search_operator(name: str):
@@ -38,4 +39,12 @@ async def get_operator_wikitext(name: str):
 
     name_out = page_data["title"]
     wikitext = page_data["revisions"][0]["*"]
+    # return wikitext
     return name_out, wikitext
+
+
+if __name__ == "__main__":
+    result1 = asyncio.run(get_operator_wikitext("公招"))
+    result2 = asyncio.run(get_operator_wikitext("娜仁图亚"))
+    print(result1)
+    print(result2)

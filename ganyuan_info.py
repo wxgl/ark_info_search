@@ -1,12 +1,13 @@
 import re
 import search_model
+import asyncio
 from collections import namedtuple
 
 OperatorInfo = namedtuple('OperatorInfo',
                           ['name', 'zhi_ye', 'fen_zhi', 'xing_ji', 'te_xing', 'te_xing_b', 'wikitext'])
 
 
-def clean_wikitext(text):
+async def clean_wikitext(text):
     """清理wikitext中的标记，提取纯文本内容"""
     if not text:
         return ""  # 返回空字符串而不是None
@@ -22,7 +23,7 @@ def clean_wikitext(text):
     return text.strip()
 
 
-async def main(ganyuan):
+async def clean_over_wiki(ganyuan):
     name, wikitext = await search_model.get_operator_wikitext(ganyuan)
 
     if not wikitext:
@@ -49,13 +50,25 @@ async def main(ganyuan):
                         results['te_xing'], results['te_xing_b'], wikitext)
 
 
-if __name__ == "__main__":
-    import asyncio
+async def main():
+    ganyuan = input("请输入干员名称：")
+    # ganyuan = "娜仁图亚"
+    """
+    result含有的参数（按顺序）：
+    name, zhi_ye, fen_zhi, xing_ji, te_xing, te_xing_b, wikitext
+    """
+    result = await clean_over_wiki(ganyuan)
+    if result:
+        # print(wikitext)
+        print(f"干员：{result.name}")
+        print(f"职业：{result.zhi_ye}")
+        print(f"分支：{result.fen_zhi}")
+        print(f"稀有度：{result.xing_ji}")
+        print(f"特性：{result.te_xing}")
+        print(f"特性备注：{result.te_xing_b}")
+    else:
+        print("未找到该干员的信息。")
 
-    result = asyncio.run(main("娜仁图亚"))
-    print(f"干员：{result.name}")
-    print(f"职业：{result.zhi_ye}")
-    print(f"分支：{result.fen_zhi}")
-    print(f"稀有度：{result.xing_ji}")
-    print(f"特性：{result.te_xing}")
-    print(f"特性备注：{result.te_xing_b}")
+
+if __name__ == "__main__":
+    asyncio.run(main("娜仁图亚"))
