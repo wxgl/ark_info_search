@@ -1,5 +1,9 @@
 import re
 import search_model
+from collections import namedtuple
+
+OperatorInfo = namedtuple('OperatorInfo',
+                          ['qita_name', 'miao_shu', 'yong_tu', 'huode_fangshi', 'fen_lei'])
 
 
 async def main(qita):
@@ -8,17 +12,33 @@ async def main(qita):
     if not wikitext:
         return None
 
-    # 直接正则找出各项
-    miao_shu = re.search(r"\|描述\s*=\s*(.+)", wikitext)
-    yong_tu = re.search(r"\|用途\s*=\s*(.+)", wikitext)
-    huode_fangshi = re.search(r"\|获得方式\s*=\s*(.+)", wikitext)
-    fen_lei = re.search(r"\|分类\s*=\s*(.+)", wikitext)
+    # 定义要查找的字段及对应的正则表达式
+    fields = [
+        ('miao_shu', r"\|描述\s*=\s*(.+)", lambda x: x.strip()),
+        ('yong_tu', r"\|用途\s*=\s*(.+)", lambda x: x.strip()),
+        ('huode_fangshi', r"\|获得方式\s*=\s*(.+)", lambda x: x.strip()),
+        ('fen_lei', r"\|分类\s*=\s*(.+)", lambda x: x.strip())
+    ]
 
-    # 没找到就返回“未找到…”
-    # 注意：这里也简单处理了下strip()，防止解析出多余的空格
-    miao_shu = miao_shu.group(1).strip() if miao_shu else "未找到描述"
-    yong_tu = yong_tu.group(1).strip() if yong_tu else "未找到用途"
-    huode_fangshi = huode_fangshi.group(1).strip() if huode_fangshi else "未找到获得方式"
-    fen_lei = fen_lei.group(1).strip() if fen_lei else "未找到分类"
+    # 批量处理正则表达式查找和结果处理
+    results = {}
+    for field_name, pattern, process_func in fields:
+        match = re.search(pattern, wikitext)
+        if match:
+            results[field_name] = process_func(match.group(1))
+        else:
+            results[field_name] = None
 
-    return qita_name, miao_shu, yong_tu, huode_fangshi, fen_lei
+    return OperatorInfo(qita_name, results['miao_shu'], results['yong_tu'],
+                        results['huode_fangshi'], results['fen_lei'])
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    result = asyncio.run(main("娜仁图亚"))
+    print(f"名称：{result.qita_name}")
+    print(f"介绍：{result.miao_shu}")
+    print(f"用途：{result.yong_tu}")
+    print(f"获得方式：{result.huode_fangshi}")
+    print(f"分类：{result.fen_lei}")

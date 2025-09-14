@@ -1,11 +1,15 @@
 import re
 import search_model
+from collections import namedtuple
+
+OperatorInfo = namedtuple('OperatorInfo',
+                          ['name', 'zhi_ye', 'fen_zhi', 'xing_ji', 'te_xing', 'te_xing_b', 'wikitext'])
 
 
 def clean_wikitext(text):
     """清理wikitext中的标记，提取纯文本内容"""
     if not text:
-        return "" # 返回空字符串而不是None
+        return ""  # 返回空字符串而不是None
 
     # 移除颜色标记 {{color|#00B0FF|回旋投射物}}
     text = re.sub(r'\{\{color\|#[0-9A-F]{6}\|(.*?)}}', r'\1', text)
@@ -24,18 +28,34 @@ async def main(ganyuan):
     if not wikitext:
         return None
 
-    # 直接正则找出各项
-    zhi_ye = re.search(r"\|职业\s*=\s*(.+)", wikitext)
-    fen_zhi = re.search(r"\|分支\s*=\s*(.+)", wikitext)
-    xing_ji = re.search(r"\|稀有度\s*=\s*(.+)", wikitext)
-    te_xing = re.search(r"\|特性\s*=\s*(.+)", wikitext)
-    te_xing_b = re.search(r"\|特性备注\s*=\s*\s*(.+)", wikitext)
+    # 定义要查找的字段及对应的正则表达式和处理方式
+    fields = [
+        ('zhi_ye', r"\|职业\s*=\s*(.+)", lambda x: clean_wikitext(x)),
+        ('fen_zhi', r"\|分支\s*=\s*(.+)", lambda x: clean_wikitext(x)),
+        ('xing_ji', r"\|稀有度\s*=\s*(.+)", lambda x: str(f"{int(x.strip()) + 1}星")),
+        ('te_xing', r"\|特性\s*=\s*(.+)", lambda x: clean_wikitext(x)),
+        ('te_xing_b', r"\|特性备注\s*=\s*\s*(.+)", lambda x: clean_wikitext(x))
+    ]
 
-    # 没找到就返回“未找到…”
-    zhi_ye = clean_wikitext(zhi_ye.group(1)) if zhi_ye else "未找到职业"
-    fen_zhi = clean_wikitext(fen_zhi.group(1)) if fen_zhi else "未找到分支"
-    xing_ji = str(f"{int(xing_ji.group(1).strip()) + 1}星") if xing_ji else "未找到稀有度"
-    te_xing = clean_wikitext(te_xing.group(1)) if te_xing else "未找到特性"
-    te_xing_b = clean_wikitext(te_xing_b.group(1)) if te_xing_b else "未找到特性备注"
+    # 批量处理正则表达式查找和结果处理
+    results = {}
+    for field_name, pattern, process_func in fields:
+        match = re.search(pattern, wikitext)
+        if match:
+            results[field_name] = process_func(match.group(1))
+        else:
+            results[field_name] = None
+    return OperatorInfo(name, results['zhi_ye'], results['fen_zhi'], results['xing_ji'],
+                        results['te_xing'], results['te_xing_b'], wikitext)
 
-    return name, zhi_ye, fen_zhi, xing_ji, te_xing, te_xing_b
+
+if __name__ == "__main__":
+    import asyncio
+
+    result = asyncio.run(main("娜仁图亚"))
+    print(f"干员：{result.name}")
+    print(f"职业：{result.zhi_ye}")
+    print(f"分支：{result.fen_zhi}")
+    print(f"稀有度：{result.xing_ji}")
+    print(f"特性：{result.te_xing}")
+    print(f"特性备注：{result.te_xing_b}")
