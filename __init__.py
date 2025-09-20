@@ -1,7 +1,8 @@
 import asyncio
-import ganyuan_info
-import qita_info
+import ganyuan
+import qita
 import gongzhao_model
+import search_model
 
 
 async def main():
@@ -16,10 +17,9 @@ async def main():
     try:
         lei_xing = int(input("查找类型："))
         if lei_xing == 0:
-            await ganyuan_info.main()
+            await ganyuan.main()
         elif lei_xing == 1:
-            await qita_info.main()
-            print("未找到该物品的信息。")
+            await qita.main()
         elif lei_xing == 2:
             await gongzhao_model.main()
         else:
@@ -27,8 +27,9 @@ async def main():
 
     except ValueError:
         print("请输入有效数字作为查找类型。")
-    except Exception as e:
-        print(f"发生了一个错误: {e}")
+    finally:
+        # 确保关闭HTTP客户端
+        await search_model.close_http_client()
 
 
 if __name__ == "__main__":
