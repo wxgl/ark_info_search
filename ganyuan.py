@@ -1,6 +1,5 @@
 import re
-import search_model
-import asyncio
+from . import search_model
 from collections import namedtuple
 
 OperatorInfo = namedtuple('OperatorInfo',
@@ -90,14 +89,4 @@ async def main(ganyuan=None, skin: str = "2"):
             print(f"特性备注：{result.te_xing_b}")
     else:
         print("未找到该干员的信息。")
-
-
-if __name__ == "__main__":
-    async def run_main():
-        try:
-            await main("玛恩纳","时装1")
-        finally:
-            # 确保关闭HTTP客户端
-            await search_model.close_http_client()
-    
-    asyncio.run(run_main())
+    await search_model.close_http_client()

@@ -1,5 +1,5 @@
 import re
-import search_model
+from . import search_model
 import asyncio
 from collections import namedtuple
 
@@ -51,14 +51,3 @@ async def main(qita=None):
         print(f"分类：{result.fen_lei}")
     else:
         print("未找到该物品的信息。")
-
-
-if __name__ == "__main__":
-    async def run_main():
-        try:
-            await main("娜仁图亚的信物")
-        finally:
-            # 确保关闭HTTP客户端
-            await search_model.close_http_client()
-    
-    asyncio.run(run_main())
