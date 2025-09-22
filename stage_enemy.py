@@ -1,4 +1,4 @@
-import asyncio
+import time
 import json
 import re
 import logging
@@ -44,7 +44,7 @@ STAGE_IMAGE_ID_PATTERN = re.compile(r"关卡id\s*=\s*([^|\n]+)")
 async def update_enemy_data():
     """定时更新敌人名称数据"""
     global enemy_data, last_update_time
-    current_time = asyncio.get_event_loop().time()
+    current_time = time.time()
     await load_enemy_data()
 
     # 检查是否需要更新数据
