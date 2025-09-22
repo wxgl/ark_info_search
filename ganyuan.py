@@ -1,6 +1,11 @@
 import re
+import logging
 from . import search_model
 from collections import namedtuple
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 OperatorInfo = namedtuple('OperatorInfo',
                           ['name', 'zhi_ye', 'fen_zhi', 'xing_ji', 'te_xing', 'te_xing_b', 'wikitext'])
@@ -37,10 +42,31 @@ FIELD_PATTERNS = {
     'te_xing_b': re.compile(r"\|特性备注\s*=\s*\s*(.+)"),
 }
 
+async def get_operator_image(name: str, skin):
+    """异步获取干员的image，默认为精二皮"""
+    if not name:
+        return []
+    if "时装" in skin:
+        skin = skin.replace("时装", "skin")
+    name = f"文件:立绘 {name} {skin}.png"
+    return await search_model.get_images_url([name])
+
+async def get_operator_info_concurrently(name: str, skin="2"):
+    """并发获取干员信息和图片，提高处理速度"""
+    try:
+        name_out, wikitext = await search_model.get_wikitext(name)
+        image_url = await get_operator_image(name, skin)
+        return name_out, wikitext, image_url
+    except (search_model.httpx.HTTPStatusError, search_model.httpx.RequestError) as e:
+        logger.error(f"获取干员信息失败: {e}")
+        return name, None, []
+    except Exception as e:
+        logger.error(f"获取干员信息时发生未知错误: {e}")
+        return name, None, []
 
 async def clean_over_wiki(ganyuan, skin):
     # 并发获取干员信息和图片，提高处理速度
-    name, wikitext, image = await search_model.get_operator_info_concurrently(ganyuan, skin)
+    name, wikitext, image = await get_operator_info_concurrently(ganyuan, skin)
 
     if not wikitext:
         return None, None
@@ -89,4 +115,3 @@ async def main(ganyuan=None, skin: str = "2"):
             print(f"特性备注：{result.te_xing_b}")
     else:
         print("未找到该干员的信息。")
-    await search_model.close_http_client()

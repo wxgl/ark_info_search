@@ -293,6 +293,4 @@ async def main(text1 = None, text2 = None):
             print(f"未找到关卡 {stage_name} 或敌人 {enemy_name} 的信息")
     else:
         print("请输入有效的查询参数")
-    
-    await search_model.close_http_client()
     return None
