@@ -1,9 +1,4 @@
-import time
-import json
-import re
-import logging
-import httpx
-import os
+import time, json, re, logging, httpx, os
 from collections import namedtuple
 from bs4 import BeautifulSoup
 from . import search_model

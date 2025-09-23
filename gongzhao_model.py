@@ -1,5 +1,4 @@
-import httpx
-import re
+import httpx, re
 
 
 async def get_public_recruitment_data():

@@ -1,5 +1,4 @@
-import re
-import logging
+import re, logging
 from . import search_model
 from collections import namedtuple
 
