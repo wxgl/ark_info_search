@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 
 OperatorInfo = namedtuple('OperatorInfo',
                           ['name', 'zhi_ye', 'fen_zhi', 'xing_ji', 'te_xing', 'te_xing_b', 'wikitext'])
+""" 待完善
+"name": "干员名称",
+"zhi_ye": "职业",
+"fen_zhi": "分支",
+"xing_ji": "稀有度",
+"te_xing": "特性",
+"te_xing_b": "特性备注",
+"wikitext": "wikitext"
+"""
 
 # 预编译正则表达式以提高性能
 COLOR_PATTERN = re.compile(r'\{\{color\|#[0-9A-F]{6}\|(.*?)}}')
@@ -42,18 +51,21 @@ FIELD_PATTERNS = {
     'te_xing_b': re.compile(r"\|特性备注\s*=\s*\s*(.+)"),
 }
 
+
 async def get_operator_image(name: str, skin):
     """异步获取干员的image，默认为精二皮"""
     if not name:
         return []
-    if "时装" in skin:
-        skin = skin.replace("时装", "skin")
+    if "时装" or "皮肤" in skin:
+        skin = re.sub("时装|皮肤", "skin", skin)
     name = f"文件:立绘 {name} {skin}.png"
     return await search_model.get_images_url([name])
+
 
 async def get_operator_info_concurrently(name: str, skin="2"):
     """并发获取干员信息和图片，提高处理速度"""
     try:
+        name = await search_model.search_wikitext(name)
         name_out, wikitext = await search_model.get_wikitext(name)
         image_url = await get_operator_image(name, skin)
         return name_out, wikitext, image_url
@@ -63,6 +75,7 @@ async def get_operator_info_concurrently(name: str, skin="2"):
     except Exception as e:
         logger.error(f"获取干员信息时发生未知错误: {e}")
         return name, None, []
+
 
 async def clean_over_wiki(ganyuan, skin):
     # 并发获取干员信息和图片，提高处理速度
@@ -94,7 +107,7 @@ async def clean_over_wiki(ganyuan, skin):
                                results['xing_ji'], results['te_xing'], results['te_xing_b'], wikitext)
 
 
-async def main(ganyuan=None, skin: str = "2"):
+async def main(ganyuan=None):
     if ganyuan is None:
         ganyuan = input("请输入干员名称：")
     # ganyuan = "娜仁图亚"
@@ -102,7 +115,9 @@ async def main(ganyuan=None, skin: str = "2"):
     result含有的参数（按顺序）：
     name, zhi_ye, fen_zhi, xing_ji, te_xing, te_xing_b, wikitext
     """
-    image, result = await clean_over_wiki(ganyuan, skin)
+    parts = re.split(r'[\s,，]+', ganyuan)
+    parts = [part.strip() for part in parts if part.strip()]
+    image, result = await clean_over_wiki(parts[0], parts[1])
     if result:
         # print(wikitext)
         print(image)
