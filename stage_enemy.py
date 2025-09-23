@@ -2,24 +2,24 @@ import time
 import json
 import re
 import logging
-from collections import namedtuple
 import httpx
 import os
+from collections import namedtuple
+from bs4 import BeautifulSoup
 from . import search_model
 
 # 定义敌人信息的命名元组
 EnemyInfo = namedtuple('EnemyInfo', [
-    'image_url', 'name', 'race', 'level', 'describe', 'attack_type', 'damage_type',
-    'motion', 'endure', 'attack', 'defence', 'move_speed', 'attack_speed',
-    'resistance', 'enemy_res', 'enemy_damage_res', 'ability'])
+    'image_url', 'name', 'race', 'level', 'describe', 'attack_type', 'damage_type', 'motion', 'endure', 'attack',
+    'defence', 'move_speed', 'attack_speed', 'resistance', 'enemy_damage_res', 'ability'])
 
 # 定义关卡信息的命名元组
-StageInfo = namedtuple('StageInfo', [
-    'image_url', 'stage_name', 'wikitext'])  # 待完善
+StageInfo = namedtuple('StageInfo', ['image_url', 'stage_name', 'wikitext'])  # 待完善
 
 # 定义关卡下怪物信息的命名元组
 StageEnemyInfo = namedtuple('StageEnemyInfo', [
-    'image_url', 'stage_name', 'enemy_name', 'level_data'])  # 待完善
+    'image_url', 'enemy_name', 'enemy_number', 'status', 'level', 'endure', 'attack', 'defence', 'resistance',
+    'attack_speed', 'weight', 'move_speed', 'attack_range'])
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,7 +90,7 @@ async def update_enemy_data(force_update=False):
     current_time = time.time()
     # 如果不是强制更新，检查是否需要更新数据
     if not force_update and current_time - last_update_time <= UPDATE_INTERVAL:
-        return
+        return False  # 返回False表示未执行更新
     try:
         name_out, wikitext = await search_model.get_wikitext("敌人一览/数据")
         if wikitext:
@@ -114,24 +114,31 @@ async def update_enemy_data(force_update=False):
                     'last_update_time': last_update_time
                 }, f, ensure_ascii=False, indent=2)
             logger.info(f"已更新敌人数据，共获取到 {len(enemy_data)} 个敌人")
+            return True  # 返回True表示成功执行更新
+        return False  # 返回False表示未成功执行更新
     except Exception as e:
         logger.error(f"更新敌人数据失败: {e}")
+        return False  # 返回False表示更新失败
 
 
 async def load_enemy_data():
     """从data文件夹下的enemy_data.json文件加载敌人数据"""
     global enemy_data, last_update_time
     try:
+        # 先尝试从文件加载数据
         with open(ENEMY_DATA_FILE, 'r', encoding='utf-8') as f:
-            await update_enemy_data()
             data = json.load(f)
             enemy_data = data.get('enemy_data', [])  # 只加载敌人名称列表
             last_update_time = data.get('last_update_time', 0)
-        logger.info(f"已从文件加载敌人数据，共 {len(enemy_data)} 个敌人")
+        # 检查数据是否需要更新
+        await update_enemy_data()  # 尝试更新，但不会每次都强制更新
+        logger.info(f"已加载敌人数据，共 {len(enemy_data)} 个敌人")
     except FileNotFoundError:
         logger.info("未找到敌人数据文件，将创建新文件")
         # 如果文件不存在，强制更新数据
-        return await update_enemy_data(force_update=True)
+        updated = await update_enemy_data(force_update=True)
+        if updated:
+            logger.info("已创建并初始化敌人数据文件")
     except Exception as e:
         logger.error(f"加载敌人数据失败: {e}")
     return enemy_data
@@ -203,7 +210,6 @@ async def get_enemy_info(enemy_name: str):
         move_speed = ""
         attack_speed = ""
         resistance = ""
-        enemy_res = ""
         enemy_damage_res = ""
 
         # 解析common2模板中的信息
@@ -288,7 +294,6 @@ async def get_enemy_info(enemy_name: str):
             move_speed=move_speed,
             attack_speed=attack_speed,
             resistance=resistance,
-            enemy_res=enemy_res,
             enemy_damage_res=enemy_damage_res,
             ability=ability
         )
@@ -348,42 +353,123 @@ async def get_stage_info(stage_name: str):
         return None
 
 
-async def stage_info_out(stage_info):
-    """输出关卡信息"""
-    if stage_info and isinstance(stage_info, StageInfo):
-        # 显示关卡信息
-        print(f"图片链接: {stage_info.image_url}")
-        print(f"关卡名称: {stage_info.stage_name}")
+async def get_enemy_in_stage(stage_name: str):
+    """获取关卡下敌人的信息，不使用get_enemy_info，单开一个"""
+    try:
+        stage_name = ''.join(char.upper() if char.isalpha() and ord(char) < 128 else char for char in stage_name)
+        # 获取页面html
+        url = "https://prts.wiki/api.php"
+        params = {
+            "action": "parse",
+            "page": stage_name,
+            "format": "json",
+            "prop": "text",
+            "redirects": 1
+        }
+        resp = await search_model.http_client.get(url, params=params)
+        resp.raise_for_status()
+        html_data = resp.json()["parse"]["text"]["*"]
+        # 解析页面html
+        soup = BeautifulSoup(html_data, "html.parser")
+        enemies = []
+        enemy_names = []  # 收集所有敌人名称
+        enemy_data_list = []  # 临时存储敌人数据
+        
+        # PRTS敌人信息基本都在<tr>里
+        for tr in soup.find_all("tr"):
+            # 查找敌人图标
+            icon_div = tr.find("div", class_="enemyicon")
+            if not icon_div:
+                continue  # 跳过非敌人行
+            # 敌人名称（在a标签title里）
+            name_a = tr.find("a", title=True)
+            enemy_name = name_a["title"] if name_a else None
+            if enemy_name:
+                enemy_names.append(enemy_name)
+                # 剩下的td为属性值
+                tds = tr.find_all("td")
+                # 第一个td是名字旁边的div，跳过
+                stats = [td.get_text(strip=True) for td in tds[2:]]  # 从第3个td开始才是数值
+                # 临时存储敌人数据
+                enemy_data_list.append({
+                    "name": enemy_name,
+                    "stats": stats
+                })
+        
+        # 并发获取所有敌人头像URL
+        enemy_images = {}
+        if enemy_names:
+            image_names = [f"文件:头像 敌人 {name}.png" for name in enemy_names]
+            image_urls = await search_model.get_images_url(image_names)
+            for i, name in enumerate(enemy_names):
+                if i < len(image_urls):
+                    enemy_images[name] = image_urls[i]
+        
+        # 组合敌人信息
+        for enemy_data in enemy_data_list:
+            enemy_name = enemy_data["name"]
+            enemies.append({
+                "name": enemy_name,
+                "icon_url": enemy_images.get(enemy_name, None),
+                "stats": enemy_data["stats"]
+            })
+        return enemies
+    except (httpx.HTTPStatusError, httpx.RequestError) as e:
+        logger.error(f"获取关卡 {stage_name} 信息失败: {e}")
+        return []
+    except KeyError as e:
+        logger.error(f"解析关卡 {stage_name} 数据时出错，缺少键值: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"获取关卡 {stage_name} 信息时发生未知错误: {e}")
+        return []
 
 
-async def get_enemy_and_stage(enemy_name: str, stage_name: str):
-    """获取关卡下敌人的信息"""
-    stage_info = await get_stage_info(stage_name)
-    if stage_info:
-        # 这里可以进一步解析关卡中的敌人配置信息
-        return StageEnemyInfo(
-            image_url=stage_info.image_url,
-            stage_name=stage_info.stage_name,
-            enemy_name=enemy_name,
-            level_data=""  # 待实现详细数据提取
-        )
-    return None
+async def all_enemy_and_stage_info_out(enemies, stageinfo):
+    """输出关卡下所有敌人的信息"""
+    stats_labels = ["数量", "地位", "等级", "生命值", "攻击力", "防御力", "法术抗性", "攻击间隔", "重量", "移动速度",
+                    "攻击范围", "目标价值"]
+    if stageinfo and isinstance(stageinfo, StageInfo):
+        print(f"地图: {stageinfo.image_url}")
+        print(f"关卡: {stageinfo.stage_name}")
+        print(f"关卡描述: {stageinfo.wikitext}")
+        for e in enemies:
+            print("敌人：", e["name"])
+            print("头像：", e["icon_url"])
+            for i, stat in enumerate(e["stats"]):
+                if i < len(stats_labels):
+                    print(f"  {stats_labels[i]}: {stat}")
+                else:
+                    print(f"未知属性{i}: {stat}")
+            print("-" * 30)
 
 
-async def enemy_and_stage_info_out(result):
-    """输出关卡下敌人的信息"""
-    if result and isinstance(result, StageEnemyInfo):
-        print(f"关卡: {result.stage_name}")
-        print(f"敌人: {result.enemy_name}")
-        print(f"等级数据: {result.level_data if result.level_data else '暂无详细数据'}")
+async def once_enemy_and_stage_info_out(enemies, enemy_name, stageinfo):
+    """输出关卡下单个敌人的信息"""
+    stats_labels = ["数量", "地位", "等级", "生命值", "攻击力", "防御力", "法术抗性", "攻击间隔", "重量", "移动速度",
+                    "攻击范围", "目标价值"]
+    if stageinfo and isinstance(stageinfo, StageInfo):
+        print(f"地图: {stageinfo.image_url}")
+        print(f"关卡: {stageinfo.stage_name}")
+        for e in enemies:
+            if e["name"] == enemy_name:
+                print("敌人：", e["name"])
+                print("头像：", e["icon_url"])
+                for i, stat in enumerate(e["stats"]):
+                    if i < len(stats_labels):
+                        print(f"  {stats_labels[i]}: {stat}")
+                    else:
+                        print(f"  未知属性{i}: {stat}")
+                print("-" * 30)
+        else:
+            print("该关卡未找到此敌人信息")
 
 
 async def main(text1=None, text2=None):
     """主函数，负责用户交互和数据处理"""
-    print("PRTS敌人和关卡信息查询系统")
     print("-" * 30)
-    print("输入敌人名称（如: 源石虫）查询敌人信息")
-    print("输入关卡名称（如: SS-8，3-3）查询关卡敌人配置")
+    print("敌人名称（如: 源石虫）或关卡名称（如: SS-8，3-3）")
+    print("或均输入，查询关卡下改名敌人数值（空格，中英文逗号分隔）")
     print("-" * 30)
     query_text = input("请输入要查询的敌人或关卡名称: ").strip()
     # 只在需要时加载敌人数据
@@ -410,7 +496,9 @@ async def main(text1=None, text2=None):
         else:
             stage_info = await get_stage_info(text1)
             if stage_info:
-                await stage_info_out(stage_info)
+                # 获取关卡中的敌人信息
+                enemies = await get_enemy_in_stage(text1)
+                await all_enemy_and_stage_info_out(enemies, stage_info)
             else:
                 print(f"未找到关卡: {text1}")
     elif text1 and text2:
@@ -421,12 +509,12 @@ async def main(text1=None, text2=None):
         else:
             enemy_name = text1
             stage_name = text2
-
-        result = await get_enemy_and_stage(enemy_name, stage_name)
-        if result:
-            await enemy_and_stage_info_out(result)
+        stageinfo = await get_stage_info(stage_name)
+        if stageinfo:
+            enemies = await get_enemy_in_stage(enemy_name)
+            await once_enemy_and_stage_info_out(enemies, enemy_name, stageinfo)
         else:
-            print(f"未找到关卡 {stage_name} 或敌人 {enemy_name} 的信息")
+            print(f"未找到关卡 {stage_name} 的信息")
     else:
         print("请输入有效的查询参数")
     return None
