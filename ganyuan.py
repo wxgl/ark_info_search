@@ -1,5 +1,4 @@
-import re
-import logging
+import re, logging
 from . import search_model
 from collections import namedtuple
 
@@ -117,7 +116,10 @@ async def main(ganyuan=None):
     """
     parts = re.split(r'[\s,，]+', ganyuan)
     parts = [part.strip() for part in parts if part.strip()]
-    image, result = await clean_over_wiki(parts[0], parts[1])
+    # 处理输入参数不足的情况，提供默认值
+    ganyuan_name = parts[0] if len(parts) > 0 else ""
+    skin = parts[1] if len(parts) > 1 else "2"
+    image, result = await clean_over_wiki(ganyuan_name, skin)
     if result:
         # print(wikitext)
         print(image)
