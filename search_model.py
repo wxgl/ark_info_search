@@ -13,7 +13,7 @@ http_client = httpx.AsyncClient(
 )
 
 
-async def get_wikitext(name: str):
+async def search_wikitext(name: str):
     """异步获取页面的wikitext内容"""
     url = "https://prts.wiki/api.php"
     params1 = {
@@ -29,10 +29,13 @@ async def get_wikitext(name: str):
         search_data = [item["title"] for item in search_data]
     except (httpx.HTTPStatusError, httpx.RequestError, KeyError) as e:
         logger.error(f"搜索请求失败: {e}")
-        return None, None
+        return None
     except Exception as e:
         logger.error(f"搜索处理失败: {e}")
-        return None, None
+        return None
+    # 如果搜索结果为空，直接返回None
+    if not search_data:
+        return None
     """支持省略字符串输入:
     输入：破茧之梦
     匹配：“破茧之梦”
@@ -42,8 +45,22 @@ async def get_wikitext(name: str):
     # 使用enumerate避免重复查找索引
     for i, r in enumerate(search_filtered):
         if r == name_filtered:
-            name = search_data[i]
-            break
+            return search_data[i]
+    # 若未找到精确匹配，则选取包含该字段的最短项
+    matching_items = []
+    for i, r in enumerate(search_filtered):
+        if name_filtered in r:
+            matching_items.append((len(r), search_data[i]))
+    # 如果有包含该字段的项，返回其中最短的
+    if matching_items:
+        matching_items.sort(key=lambda x: x[0])  # 按长度排序
+        shortest_item = matching_items[0][1]
+        print(f"未找到精确匹配项，使用包含该字段的最短项: {shortest_item}")
+        return shortest_item
+
+
+async def get_wikitext(name: str):
+    url = "https://prts.wiki/api.php"
     params2 = {
         "action": "query",
         "prop": "revisions",
@@ -75,6 +92,7 @@ async def get_wikitext(name: str):
     else:
         wikitext = page_data["revisions"][0]["*"]
     return name_out, wikitext
+
 
 async def get_images_url(image_titles: list):
     """批量获取图片的详细信息"""
@@ -109,6 +127,7 @@ async def get_images_url(image_titles: list):
             image_url_list.append(image_url)
 
     return image_url_list
+
 
 # 程序退出时关闭http客户端
 async def close_http_client():
