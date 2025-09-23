@@ -11,19 +11,19 @@
 
 ## 项目结构
 
-| 文件／模块                  | 作用                        |
-|------------------------|---------------------------|
-| `search_model.py`      | 负责核心信息获取，将请求发送到 Media API |
-| `ganyuan.py`           | 干员信息查询模块（目前少量信息可查)        |
-| `other_thing.py`       | 非干员的信息查询模块（待完善）           |
-| `__main__.py`          | 主程序(使用的是相对导入)             |
-| `gongzhao.py`          | 公招信息查询模块                  |
-| `stage_enemy.py`       | 关卡怪物数值查询模块                |
-| `data/enemy_data.json` | 怪物存储                      |
+| 文件／模块                  | 作用                         |
+|------------------------|----------------------------|
+| `search_model.py`      | 负责大部分信息获取，将请求发送到 Media API |
+| `ganyuan.py`           | 干员信息查询模块（目前少量信息可查)         |
+| `other_thing.py`       | 非干员的信息查询模块（待完善）            |
+| `__main__.py`          | 主程序(使用的是相对导入)              |
+| `gongzhao.py`          | 公招信息查询模块                   |
+| `stage_enemy.py`       | 关卡怪物数值查询模块                 |
+| `data/enemy_data.json` | 怪物存储                       |
 
 ## 依赖项
 
-安装依赖：httpx和asyncio模块
+安装依赖：httpx、asyncio、beautifulsoup4
 
 ```bash
 pip install -r requirements.txt
