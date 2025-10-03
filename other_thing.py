@@ -2,8 +2,8 @@ import re
 from . import search_model
 from collections import namedtuple
 
-OperatorInfo = namedtuple('OperatorInfo',
-                          ['other_thing_name', 'describe', 'yong_tu', 'get_manner', 'fen_lei'])
+OtherthingInfo = namedtuple('OtherthingInfo',
+                          ['image_url', 'other_thing_name', 'describe', 'yong_tu', 'get_manner', 'fen_lei'])
 
 # 预编译字段正则表达式
 FIELD_PATTERNS_OTHER = [
@@ -14,13 +14,20 @@ FIELD_PATTERNS_OTHER = [
 ]
 
 
+async def get_other_image(name: str):
+    """异步获取道具的image"""
+    if not name:
+        return []
+    name = f"文件:道具 带框 {name}.png"
+    return await search_model.get_images_url([name])
+
+
 async def clean_over_wiki(other_thing_name):
     other_thing_name = await search_model.search_wikitext(other_thing_name)
     other_thing_name, wikitext = await search_model.get_wikitext(other_thing_name)
-
+    image_url = await get_other_image(other_thing_name)
     if not wikitext:
         return None
-
     # 批量处理正则表达式查找和结果处理
     results = {}
     for field_name, pattern, process_func in FIELD_PATTERNS_OTHER:
@@ -30,7 +37,7 @@ async def clean_over_wiki(other_thing_name):
         else:
             results[field_name] = None
 
-    return OperatorInfo(other_thing_name, results['describe'], results['yong_tu'],
+    return OtherthingInfo(image_url, other_thing_name, results['describe'], results['yong_tu'],
                         results['get_manner'], results['fen_lei'])
 
 
@@ -44,6 +51,7 @@ async def main(other_thing_name=None):
     """
     result = await clean_over_wiki(other_thing_name)
     if result:
+        print(f"图片：{result.image_url}")
         print(f"名称：{result.other_thing_name}")
         print(f"介绍：{result.describe}")
         print(f"用途：{result.yong_tu}")
