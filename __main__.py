@@ -1,11 +1,23 @@
-import asyncio
-from . import ganyuan, other_thing, gongzhao_model, stage_enemy, search_model
+import asyncio, yaml# , logging
+import ganyuan, other_thing, gongzhao_model, stage_enemy, search_model
+
+# 配置日志
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# logger = logging.getLogger(__name__)
+
+def load_yaml_config(config_path):
+    with open(config_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+    print("已加载配置文件")
+    return config
 
 
 async def main():
     """
     程序的主异步函数
     """
+    # logger.info("程序启动") # 用于测试加载速度。使用asyncio更耗时
+    config = load_yaml_config('config.yaml')
     print("PRTS信息查询系统")
     print("-" * 30)
     print(f"功能列表："
@@ -13,19 +25,20 @@ async def main():
           f"\n   精确：娜仁图亚，模糊：娜仁(需连贯)"
           f"\n2 获取其他信息(如：娜仁图亚的信物)"
           f"\n3 公招查询"
-          f"\n4 关卡及敌人查询")
+          f"\n4 关卡及敌人查询"
+          f"\n图片一般为6MB左右，下载可能有点慢")
     print("-" * 30)
 
     try:
         lei_xing = int(input("查找类型："))
         if lei_xing == 1:
-            await ganyuan.main()
+            await ganyuan.main(config=config)
         elif lei_xing == 2:
-            await other_thing.main()
+            await other_thing.main(config=config)
         elif lei_xing == 3:
-            await gongzhao_model.main()
+            await gongzhao_model.main() # 暂时不需config
         elif lei_xing == 4:
-            await stage_enemy.main()
+            await stage_enemy.main(config=config)
         else:
             print("输入的功能选项无效。")
     except ValueError:

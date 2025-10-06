@@ -1,0 +1,6 @@
+image: # 仅填写为 True 或 False， 是否获取图片对速度影响较大
+  ganyuan_image_output: True
+  otherthing_image_output: True
+  # ↓目前仅控制同时输出的情况，如地图和全怪，地图单怪
+  stage_image_output: True
+  enemy_image_output: True

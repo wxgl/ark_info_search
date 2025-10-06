@@ -1,5 +1,5 @@
 import re
-from . import search_model
+import search_model
 from collections import namedtuple
 
 OtherthingInfo = namedtuple('OtherthingInfo',
@@ -13,6 +13,7 @@ FIELD_PATTERNS_OTHER = [
     ('fen_lei', re.compile(r"\|分类\s*=\s*(.+)"), lambda x: x.strip())
 ]
 
+image_output = False
 
 async def get_other_image(name: str):
     """异步获取道具的image"""
@@ -25,7 +26,10 @@ async def get_other_image(name: str):
 async def clean_over_wiki(other_thing_name):
     other_thing_name = await search_model.search_wikitext(other_thing_name)
     other_thing_name, wikitext = await search_model.get_wikitext(other_thing_name)
-    image_url = await get_other_image(other_thing_name)
+    if image_output:
+        image_url = await get_other_image(other_thing_name)
+    else:
+        image_url = []
     if not wikitext:
         return None
     # 批量处理正则表达式查找和结果处理
@@ -41,7 +45,7 @@ async def clean_over_wiki(other_thing_name):
                         results['get_manner'], results['fen_lei'])
 
 
-async def main(other_thing_name=None):
+async def main(config, other_thing_name=None):
     if other_thing_name is None:
         other_thing_name = input("请输入名称：")
     # other_thing_name = "娜仁图亚的信物"
@@ -49,9 +53,14 @@ async def main(other_thing_name=None):
     result含有的参数（按顺序）：
     other_thing_name, describe, yong_tu, get_manner, fen_lei
     """
+    global image_output  # 声明图片设置为全局变量
+    image_output = config["image"]["otherthing_image_output"]
     result = await clean_over_wiki(other_thing_name)
     if result:
-        print(f"图片：{result.image_url}")
+        if image_output:
+            print(f"图片：{result.image_url}")
+        else:
+            print(f"是否输出图片：{image_output}")
         print(f"名称：{result.other_thing_name}")
         print(f"介绍：{result.describe}")
         print(f"用途：{result.yong_tu}")

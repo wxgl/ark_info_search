@@ -29,9 +29,13 @@
 pip install -r requirements.txt
 ```
 
+### 
+ - [x] config设置（目前仅有图片输出控制）
+ - [ ] 材料查询
+
 ## 贡献
 
-欢迎贡献！ 若你想提交 bug 报告、功能建议或拉取请求，请说明。
+欢迎贡献！ 若你想提交 bug 报告、功能建议或拉取请求，可以提交issue
 
 [2]: https://prts.wiki/w/%E9%A6%96%E9%A1%B5 "PRTS WIKI 首页"
 
