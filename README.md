@@ -29,6 +29,10 @@
 pip install -r requirements.txt
 ```
 
+### 
+ - [x] config设置（目前仅有图片输出控制）
+ - [ ] 材料查询
+
 ## 贡献
 
 欢迎贡献！ 若你想提交 bug 报告、功能建议或拉取请求，请说明。

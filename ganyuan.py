@@ -1,5 +1,5 @@
 import re, logging
-from . import search_model
+import search_model
 from collections import namedtuple
 
 # 配置日志
@@ -23,6 +23,8 @@ COLOR_PATTERN = re.compile(r'\{\{color\|#[0-9A-F]{6}\|(.*?)}}')
 LINK_PATTERN_1 = re.compile(r'\[\[([^]|]+)\|([^]]+)]]')
 LINK_PATTERN_2 = re.compile(r'\[\[([^]]+)]]')
 BOLD_ITALIC_PATTERN = re.compile(r"''+(.*?)''+")
+
+image_output = False
 
 
 def clean_wikitext(text):
@@ -53,8 +55,7 @@ FIELD_PATTERNS = {
 
 async def get_operator_image(name: str, skin):
     """异步获取干员的image，默认为精二皮"""
-    if not name:
-        return []
+    name = re.sub(r'[（）]',lambda m: {'（': '(', '）': ')'}.get(m.group(0)),name)
     if "时装" or "皮肤" in skin:
         skin = re.sub("时装|皮肤", "skin", skin)
     name = f"文件:立绘 {name} {skin}.png"
@@ -66,7 +67,10 @@ async def get_operator_info_concurrently(name: str, skin="2"):
     try:
         name = await search_model.search_wikitext(name)
         name_out, wikitext = await search_model.get_wikitext(name)
-        image_url = await get_operator_image(name, skin)
+        if image_output:
+            image_url = await get_operator_image(name, skin)
+        else:
+            image_url = ""
         return name_out, wikitext, image_url
     except (search_model.httpx.HTTPStatusError, search_model.httpx.RequestError) as e:
         logger.error(f"获取干员信息失败: {e}")
@@ -106,7 +110,7 @@ async def clean_over_wiki(ganyuan, skin):
                                results['xing_ji'], results['te_xing'], results['te_xing_b'], wikitext)
 
 
-async def main(ganyuan=None):
+async def main(config, ganyuan=None):
     if ganyuan is None:
         ganyuan = input("请输入干员名称：")
     # ganyuan = "娜仁图亚"
@@ -119,10 +123,15 @@ async def main(ganyuan=None):
     # 处理输入参数不足的情况，提供默认值
     ganyuan_name = parts[0] if len(parts) > 0 else ""
     skin = parts[1] if len(parts) > 1 else "2"
+    global image_output # 声明图片设置为全局变量
+    image_output = config["image"]["ganyuan_image_output"]
     image, result = await clean_over_wiki(ganyuan_name, skin)
     if result:
         # print(wikitext)
-        print(image)
+        if image_output:
+            print(image)
+        else:
+            print(f"是否输出图片：{image_output}")
         print(f"干员：{result.name}")
         print(f"职业：{result.zhi_ye}")
         print(f"分支：{result.fen_zhi}")
