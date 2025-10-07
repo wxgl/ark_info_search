@@ -32,20 +32,24 @@ async def main():
     try:
         lei_xing = int(input("查找类型："))
         if lei_xing == 1:
-            await ganyuan.main(config=config)
+            ganyuan1 = ganyuan.initialize_ganyuan(config)
+            await ganyuan1.run()
         elif lei_xing == 2:
-            await other_thing.main(config=config)
+            other_thing1 = other_thing.initialize_other_thing(config)
+            await other_thing1.run()
         elif lei_xing == 3:
-            await gongzhao_model.main() # 暂时不需config
+            gongzhao_model1 = gongzhao_model.initialize_gongzhao_model(config)
+            await gongzhao_model1.run()
         elif lei_xing == 4:
-            await stage_enemy.main(config=config)
+            stage_enemy1 = stage_enemy.initialize_stage_enemy(config)
+            await stage_enemy1.run()
         else:
             print("输入的功能选项无效。")
     except ValueError:
         print("请输入有效数字作为查找类型。")
     finally:
         # 确保关闭HTTP客户端
-        await search_model.close_http_client()
+        await search_model.search_model.close_http_client()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import re
-import search_model
 from collections import namedtuple
+from search_model import search_model
 
 OtherthingInfo = namedtuple('OtherthingInfo',
                           ['image_url', 'other_thing_name', 'describe', 'yong_tu', 'get_manner', 'fen_lei'])
@@ -13,58 +13,67 @@ FIELD_PATTERNS_OTHER = [
     ('fen_lei', re.compile(r"\|分类\s*=\s*(.+)"), lambda x: x.strip())
 ]
 
-image_output = False
 
-async def get_other_image(name: str):
-    """异步获取道具的image"""
-    if not name:
-        return []
-    name = f"文件:道具 带框 {name}.png"
-    return await search_model.get_images_url([name])
+class OtherThing:
+    def __init__(self, config=None):
+        self.config = config
+        self.image_output = self.config["image"]["otherthing_image_output"]
 
+    async def get_other_image(self, name: str):
+        """异步获取道具的image"""
+        if not name:
+            return []
+        name = f"文件:道具 带框 {name}.png"
+        return await search_model.get_images_url([name])
 
-async def clean_over_wiki(other_thing_name):
-    other_thing_name = await search_model.search_wikitext(other_thing_name)
-    other_thing_name, wikitext = await search_model.get_wikitext(other_thing_name)
-    if image_output:
-        image_url = await get_other_image(other_thing_name)
-    else:
-        image_url = []
-    if not wikitext:
-        return None
-    # 批量处理正则表达式查找和结果处理
-    results = {}
-    for field_name, pattern, process_func in FIELD_PATTERNS_OTHER:
-        match = pattern.search(wikitext)
-        if match:
-            results[field_name] = process_func(match.group(1))
+    async def clean_over_wiki(self, other_thing_name):
+        other_thing_name = await search_model.search_wikitext(other_thing_name)
+        other_thing_name, wikitext = await search_model.get_wikitext(other_thing_name)
+        if self.image_output:
+            image_url = await self.get_other_image(other_thing_name)
         else:
-            results[field_name] = None
+            image_url = []
+        if not wikitext:
+            return None
+        # 批量处理正则表达式查找和结果处理
+        results = {}
+        for field_name, pattern, process_func in FIELD_PATTERNS_OTHER:
+            match = pattern.search(wikitext)
+            if match:
+                results[field_name] = process_func(match.group(1))
+            else:
+                results[field_name] = None
 
-    return OtherthingInfo(image_url, other_thing_name, results['describe'], results['yong_tu'],
-                        results['get_manner'], results['fen_lei'])
+        return OtherthingInfo(image_url, other_thing_name, results['describe'], results['yong_tu'],
+                            results['get_manner'], results['fen_lei'])
 
-
-async def main(config, other_thing_name=None):
-    if other_thing_name is None:
-        other_thing_name = input("请输入名称：")
-    # other_thing_name = "娜仁图亚的信物"
-    """
-    result含有的参数（按顺序）：
-    other_thing_name, describe, yong_tu, get_manner, fen_lei
-    """
-    global image_output  # 声明图片设置为全局变量
-    image_output = config["image"]["otherthing_image_output"]
-    result = await clean_over_wiki(other_thing_name)
-    if result:
-        if image_output:
-            print(f"图片：{result.image_url}")
+    async def run(self, other_thing_name=None):
+        if other_thing_name is None:
+            other_thing_name = input("请输入名称：")
+        # other_thing_name = "娜仁图亚的信物"
+        """
+        result含有的参数（按顺序）：
+        other_thing_name, describe, yong_tu, get_manner, fen_lei
+        """
+        result = await self.clean_over_wiki(other_thing_name)
+        if result:
+            if self.image_output:
+                print(f"图片：{result.image_url}")
+            else:
+                print(f"是否输出图片：{self.image_output}")
+            print(f"名称：{result.other_thing_name}")
+            print(f"介绍：{result.describe}")
+            print(f"用途：{result.yong_tu}")
+            print(f"获得方式：{result.get_manner}")
+            print(f"分类：{result.fen_lei}")
         else:
-            print(f"是否输出图片：{image_output}")
-        print(f"名称：{result.other_thing_name}")
-        print(f"介绍：{result.describe}")
-        print(f"用途：{result.yong_tu}")
-        print(f"获得方式：{result.get_manner}")
-        print(f"分类：{result.fen_lei}")
-    else:
-        print("未找到该物品的信息。")
+            print("未找到该物品的信息。")
+
+# 延迟初始化
+other_thing_instance = None
+
+def initialize_other_thing(config):
+    global other_thing_instance
+    if other_thing_instance is None:
+        other_thing_instance = OtherThing(config)
+    return other_thing_instance
