@@ -26,6 +26,7 @@
 ## 依赖项
 
 安装依赖：httpx、asyncio、beautifulsoup4
+要先创建虚拟环境（抱歉我是linux新手）
 
 ```bash
 pip install -r requirements.txt
