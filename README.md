@@ -20,7 +20,6 @@
 | `__main__.py`          | 主程序入口                      |
 | `gongzhao.py`          | 公招信息查询模块                   |
 | `stage_enemy.py`       | 关卡怪物数值查询模块                 |
-| `screenshort.py`       | 直接截图模块（主程序暂未使用）            |
 | `data/enemy_data.json` | 怪物存储                       |
 
 ## 依赖项
